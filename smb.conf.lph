@@ -1,0 +1,274 @@
+# smb.conf / LPH / LDAP
+[global]
+
+   workgroup = lph.local
+   server string = Serveur %h (%v / %L)
+   netbios name = srv
+   realm = srv
+
+###### Debugging/Accounting ######
+
+   log file = /var/log/samba/log.%m
+   max log size = 1000
+   syslog = 0
+   panic action = /usr/share/samba/panic-action %d
+   log level = 2
+   debug timestamp = yes
+
+###### PDC ######
+
+   domain master = yes
+   local master = yes
+   prefered master = yes
+   domain logons = yes
+   os level = 77
+   time server = yes
+   host msdfs = yes
+   msdfs root = yes
+   wins support = yes
+   name resolve order = wins host bcast
+   dns proxy = yes
+
+###### Authentication ######
+
+   security = user
+   encrypt passwords = true
+   ldap passwd sync = yes
+   passdb backend = ldapsam:ldaps://ldap2.lph.im/
+   ldap ssl = no
+   ldap admin dn = cn=admin,dc=lph,dc=local
+   ldap suffix = dc=lph,dc=local
+   ldap group suffix = ou=groups
+   ldap user suffix = ou=people
+   ldap machine suffix = ou=computers
+   ldap delete dn = no
+   enable privileges = yes
+
+###### Scripts ######
+
+   add user script = /usr/sbin/smbldap-useradd -m "%u"
+   delete user script = /usr/sbin/smbldap-userdel "%u"
+   add machine script = /usr/sbin/smbldap-useradd -t 10 -i -w "%u"
+   add group script = /usr/sbin/smbldap-groupadd -p "%g"
+   delete group script = /usr/sbin/smbldap-groupdel "%g"
+   add user to group script = /usr/sbin/smbldap-groupmod -m "%u" "%g"
+   delete user from group script = /usr/sbin/smbldap-groupmod -x "%u" "%g"
+   set primary group script = /usr/sbin/smbldap-usermod -g "%g" "%u"
+   passwd program = /usr/sbin/smbldap-passwd -u %u
+
+###### Misc ######
+
+   logon path = \\%L\profiles\%U
+   logon drive = P:
+   logon home = \\%L\%U
+   logon script = logon_%U.vbs
+   case sensitive = No
+   default case = lower
+   preserve case = yes
+   short preserve case = yes
+   hosts allow = 192.168. 127.
+   winbind use default domain = Yes
+   nt acl support = Yes
+   msdfs root = Yes
+   unix charset = UTF8
+   display charset = UTF8
+   dos charset = CP1251
+   dos filemode = yes
+   socket options = TCP_NODELAY SO_RCVBUF=8192 SO_SNDBUF=8192
+   veto oplock files = /*.doc/*.xls/*.mdb/
+   hide files = /desktop.ini/ntuser.ini/NTUSER.*/
+   hide dot files = yes
+   guest account = nobody
+   oplocks = no
+   level2 oplocks = no
+   kernel oplocks = no
+   template shell = /bin/false
+#   strict locking = no
+
+###### Printing ######
+
+   printcap name = cups
+   load printers = yes
+   printing = cups
+   printer admin = @lpadmin
+
+[printers]
+   comment = Imprimantes
+   path = /var/spool/samba
+   browseable = no
+   guest ok = yes
+   writable = no
+   printable = yes
+   create mode = 0700
+   print command = lpr-cups -P %p -o raw %s -r
+
+[print$]
+   writable = yes
+   path = /var/lib/samba/printers
+   public = yes
+   guest ok = yes
+   browseable = yes
+   inherit permissions = yes
+   valid users = @lph @lpadmin
+   read list = @lph
+   write list = @lpadmin
+
+###### PDC Shares ######
+
+[netlogon]
+   path = /lph/samba/netlogon
+   root preexec = /lph/samba/netlogon/makelogon.sh %U
+   writable = No
+   browseable = No
+   write list = @domain_admins
+
+[profiles]
+   path = /lph/samba/profiles
+   browseable = No
+   writeable = Yes
+   profile acls = yes
+   create mask = 0700
+   directory mask = 0700
+   guest ok = yes
+
+[homes]
+   comment = Repertoire Personnel de %U
+   path = /lph/samba/home/%U
+   root preexec = /lph/samba/netlogon/mkhomedir.sh %U
+   browseable = No
+   writeable = Yes
+   valid users = %S
+   create mask = 0700
+   directory mask = 0700
+
+[wpkg]
+   comment = Deploiement logiciels
+   path = /lph/samba/wpkg
+   writable = no
+   force user = root
+   force group = domain_users
+   create mask = 0660
+   directory mask = 0770
+   valid users = @domain_users @domain_computers
+   write list = @domain_admins
+
+###### Custom Shares ######
+
+[commun]
+   comment = Répertoire Commun
+   path = /lph/samba/commun
+   follow symlinks = yes
+   wide links = no
+   writable = yes
+   force user = root
+   force group = domain_users
+   create mask = 0660
+   directory mask = 0770
+   valid users = @domain_users
+   hide files = /Corbeille/
+   vfs objects = recycle
+   recycle:versions = Yes
+   recycle:keeptree = Yes
+   recycle:repository = Corbeille
+
+[compta-rh]
+   comment = Compta et Ressources Humaines
+   path = /lph/samba/compta
+   follow symlinks = yes
+   wide links = no
+   writable = yes
+   force user = root
+   force group = compta
+   create mask = 0660
+   directory mask = 0770
+   valid users = @compta @rh
+   hide files = /Corbeille/
+   vfs objects = recycle
+   recycle:versions = Yes
+   recycle:keeptree = Yes
+   recycle:repository = Corbeille
+
+[direction]
+   comment = Direction
+   path = /lph/samba/direction
+   follow symlinks = yes
+   wide links = no
+   writable = yes
+   force user = root
+   force group = direction
+   create mask = 0660
+   directory mask = 0770
+   valid users = @direction
+   hide files = /Corbeille/
+   vfs objects = recycle
+   recycle:versions = Yes
+   recycle:keeptree = Yes
+   recycle:repository = Corbeille
+
+[francecall]
+   comment = France Call
+   path = /lph/samba/francecall
+   follow symlinks = yes
+   wide links = no
+   writable = yes
+   force user = root
+   force group = francecall
+   create mask = 0660
+   directory mask = 0770
+   valid users = @francecall @direction
+   hide files = /Corbeille/
+   vfs objects = recycle
+   recycle:versions = Yes
+   recycle:keeptree = Yes
+   recycle:repository = Corbeille
+
+[imediacom]
+   comment = iMediaCom
+   path = /lph/samba/imediacom
+   follow symlinks = yes
+   wide links = no 
+   writable = yes
+   force user = root
+   force group = imediacom
+   create mask = 0660
+   directory mask = 0770
+   valid users = @imediacom @direction
+   hide files = /Corbeille/
+   vfs objects = recycle
+   recycle:versions = Yes
+   recycle:keeptree = Yes
+   recycle:repository = Corbeille
+
+[informatique]
+   comment = Informatique
+   path = /lph/samba/informatique
+   follow symlinks = yes
+   wide links = no
+   writable = yes
+   force user = root
+   force group = tech
+   create mask = 0660
+   directory mask = 0770
+   valid users = @tech
+   hide files = /Corbeille/
+   vfs objects = recycle
+   recycle:versions = Yes
+   recycle:keeptree = Yes
+   recycle:repository = Corbeille
+
+[secretariat]
+   comment = Secrétariat
+   path = /lph/samba/secretariat
+   follow symlinks = yes
+   wide links = no
+   writable = yes
+   force user = root
+   force group = secretariat
+   create mask = 0660
+   directory mask = 0770
+   valid users = @secretariat @adv @compta @direction @tech @rh 
+   hide files = /Corbeille/
+   vfs objects = recycle
+   recycle:versions = Yes
+   recycle:keeptree = Yes
+   recycle:repository = Corbeille
